@@ -40,7 +40,9 @@ export class Startup {
 
     //catch 404 and forward to error handler
     app.use((req, res, next) => {
-      let err: any = new Error('Not Found');
+      let NOT_FOUND = 'Not Found'
+      let err: any = new Error(NOT_FOUND);
+      err.name = NOT_FOUND;
       err.status = 404;
       next(err);
     });
@@ -49,8 +51,12 @@ export class Startup {
     //will include stack as 'details' attribute
     if (!appSettings.production) {
       app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-        err.details = err;
-        next(err);
+        let detailedErr: any = new Error(err.message);
+        let stack: string = err.stack;
+        detailedErr.details = stack.split(' at ').map(str => str.trim());
+        detailedErr.name = err.name;
+        delete detailedErr.stack;
+        next(detailedErr);
       });
     }
 

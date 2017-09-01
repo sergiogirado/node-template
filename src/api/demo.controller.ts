@@ -1,20 +1,19 @@
-import { Resource, Route, Http } from './api-core';
-
+import { Route, HttpGet, HttpPost } from './api-core';
 import { DemoService } from './../domain/demo/demo.service';
 
-@Resource('demo')
+@Route('demo')
 export class DemoController {
   constructor(
-    private bcService: DemoService
+    private demoService: DemoService
   ) { }
 
-  @Route(Http.GET, '/')
+  @HttpGet('/')
   getAll() {
-    return this.bcService.getAll();
+    return this.demoService.getAll();
   }
 
-  @Route(Http.POST, '/')
+  @HttpPost('/')
   post(routeParams: any, body: any) {
-    return this.bcService.create(body);
+    return this.demoService.create(body);
   }
 }

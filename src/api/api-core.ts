@@ -1,38 +1,69 @@
 import { Router, Request, Response, NextFunction } from 'express';
 
+const methodMetadataKey = Symbol('method');
 const routeMetadataKey = Symbol('route');
-const resourcePrefixMetadataKey = Symbol('resource');
 
-export const apiControllers: any[] = [];
-
-export enum Http {
-  GET = 'get',
-  POST = 'post',
-  PUT = 'put',
-  DELETE = 'delete'
+export interface IDependencyResolver {
+  getService<T, Ti>(identifier: Ti): T;
 }
 
-export function Resource(prefix: string) {
+export interface IApiConfig {
+  dependencyResolver: IDependencyResolver;
+  controllers: ObjectConstructor[];
+}
+
+export const ApiConfig: IApiConfig = {
+  dependencyResolver: {
+    getService(identifier: any): any {
+      return null;
+    }
+  },
+  controllers: []
+};
+export function Route(route: string) {
   return function (target: any) {
-    apiControllers.push(target);
-    Reflect.metadata(resourcePrefixMetadataKey, prefix)(target);
+    ApiConfig.controllers.push(target);
+    let decorator = Reflect.metadata(routeMetadataKey, route);
+    decorator(target);
   };
 }
 
-export function Route(verb: Http, route: string) {
-  return Reflect.metadata(routeMetadataKey, { verb, route });
-}
+export const Http = {
+  Get: (route: string) => HttpGet(route),
+  Post: (route: string) => HttpPost(route),
+  Put: (route: string) => HttpPut(route),
+  Delete: (route: string) => HttpDelete(route),
+};
 
+export function HttpGet(route: string) {
+  return HttpMethod('get', route);
+}
+export function HttpPost(route: string) {
+  return HttpMethod('post', route);
+}
+export function HttpPut(route: string) {
+  return HttpMethod('put', route);
+}
+export function HttpDelete(route: string) {
+  return HttpMethod('delete', route);
+}
+export function HttpMethod(verb: 'get' | 'post' | 'put' | 'delete', name: string) {
+  return Reflect.metadata(methodMetadataKey, <IMethodMetadataValue>{ verb, name })
+}
+interface IMethodMetadataValue {
+  verb: string;
+  name: string;
+}
 export function registerApi(apiRouter: Router, apiPrefix: string, controllerInstance: any) {
   let resourceRouter: any = Router();
-  let resourcePrefix = Reflect.getMetadata(resourcePrefixMetadataKey, controllerInstance.constructor);
+  let resourcePrefix = Reflect.getMetadata(routeMetadataKey, controllerInstance.constructor);
 
-  for (var potentialEndpointMethodName in controllerInstance) {
-    var potentialEndpointMethod: (queryParams: any, body: any) => Promise<any> = controllerInstance[potentialEndpointMethodName];
+  for (let potentialEndpointMethodName in controllerInstance) {
 
-    let metadataRef: { route: string, verb: string } = Reflect.getMetadata(routeMetadataKey, controllerInstance, potentialEndpointMethodName);
+    let metadataRef: IMethodMetadataValue = Reflect.getMetadata(methodMetadataKey, controllerInstance, potentialEndpointMethodName);
     if (metadataRef) {
-      resourceRouter[metadataRef.verb](metadataRef.route, (req: Request, res: Response, next: NextFunction) => {
+      let potentialEndpointMethod: (queryParams: any, body: any) => Promise<any> = controllerInstance[potentialEndpointMethodName];
+      resourceRouter[metadataRef.verb](metadataRef.name, (req: Request, res: Response, next: NextFunction) => {
         let apiMethod = potentialEndpointMethod.bind(controllerInstance);
         let routeParams = Object.assign({}, req.query, req.params);
         let body = req.query;
@@ -51,6 +82,6 @@ export function registerApi(apiRouter: Router, apiPrefix: string, controllerInst
       });
     }
   }
-  
+
   apiRouter.use(apiPrefix + resourcePrefix, resourceRouter);
 }

@@ -4,16 +4,13 @@ import { Container, decorate, injectable, inject } from 'inversify';
 import { DemoService } from './../domain/demo/demo.service';
 import { DemoMockRepository } from './../infrastructure/mocks/DemoMockRepository';
 import { DemoController } from './../api/demo.controller';
-import { apiControllers } from './../api/api-core';
-import { controllers } from './../api';
+import { IDependencyResolver, ApiConfig } from './../api/api-core';
 
 export const TYPES = {
   IDemoRepositry: Symbol('IDemoRepositry'),
   DemoRepositry: Symbol('DemoRepositry'),
   DemoService: Symbol('DemoService')
 };
-
-let container: Container = new Container();
 
 export function addInversify() {
   decorate(injectable(), DemoMockRepository);
@@ -24,13 +21,22 @@ export function addInversify() {
   decorate(injectable(), DemoController);
   decorate(inject(TYPES.DemoService), DemoController, 0);
 
+  let container: Container = new Container();
   container.bind(TYPES.IDemoRepositry).to(DemoMockRepository);
   container.bind(TYPES.DemoService).to(DemoService);
 
-  apiControllers.forEach(target => {
-    container.bind(Symbol.for(target.constructor.name)).to(target);
-    controllers.push(dependencies.get(Symbol.for(target.constructor.name)));
+  ApiConfig.controllers.forEach(target => {
+    container.bind(Symbol.for(target.name)).to(target);
   });
+
+  ApiConfig.dependencyResolver = new InversifyDependencyResolver(container);
 }
 
-export const dependencies = container;
+class InversifyDependencyResolver implements IDependencyResolver {
+  constructor(
+    private container: Container
+  ) { }
+  getService<T, Ti>(identifier: Ti): T {
+    return this.container.get<T>(<any>identifier)
+  }
+}

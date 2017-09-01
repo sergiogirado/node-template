@@ -10,7 +10,7 @@ export function setPreferredLanguage(langs: string) {
     let lastLangExpression = prior[prior.length - 1];
     let matchLang = false;
     do {
-      langExpression = prior[prior.indexOf(langExpression + 1)];
+      langExpression = prior[prior.indexOf(langExpression) + 1];
       let matchs = langExpression.split(',').filter(part => supportedLangs.indexOf(part) !== -1);
 
       if (matchs.length) {
