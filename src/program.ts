@@ -8,7 +8,7 @@ import { Startup } from './startup';
 
 class Program {
   static main() {
-    new Startup(app => {
+    let starturp = new Startup(app => {
       let server: Server;
       let debug: IDebugger = debugModule('express:server');
       app.set('port', appSettings.port);
