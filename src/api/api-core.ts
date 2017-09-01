@@ -47,26 +47,26 @@ export function HttpPut(route: string) {
 export function HttpDelete(route: string) {
   return HttpMethod('delete', route);
 }
-export function HttpMethod(verb: 'get' | 'post' | 'put' | 'delete', name: string) {
-  return Reflect.metadata(methodMetadataKey, <IMethodMetadataValue>{ verb, name })
-}
 interface IMethodMetadataValue {
   verb: string;
   name: string;
+}
+export function HttpMethod(verb: 'get' | 'post' | 'put' | 'delete', name: string) {
+  return Reflect.metadata(methodMetadataKey, <IMethodMetadataValue>{ verb, name })
 }
 export function registerApi(apiRouter: Router, apiPrefix: string, controllerInstance: any) {
   let resourceRouter: any = Router();
   let resourcePrefix = Reflect.getMetadata(routeMetadataKey, controllerInstance.constructor);
 
-  for (let potentialEndpointMethodName in controllerInstance) {
+  for (let member in controllerInstance) {
 
-    let metadataRef: IMethodMetadataValue = Reflect.getMetadata(methodMetadataKey, controllerInstance, potentialEndpointMethodName);
+    let metadataRef: IMethodMetadataValue = Reflect.getMetadata(methodMetadataKey, controllerInstance, member);
     if (metadataRef) {
-      let potentialEndpointMethod: (queryParams: any, body: any) => Promise<any> = controllerInstance[potentialEndpointMethodName];
+      let potentialEndpointMethod: (queryParams: any, body: any) => Promise<any> = controllerInstance[member];
       resourceRouter[metadataRef.verb](metadataRef.name, (req: Request, res: Response, next: NextFunction) => {
         let apiMethod = potentialEndpointMethod.bind(controllerInstance);
         let routeParams = Object.assign({}, req.query, req.params);
-        let body = req.query;
+        let body = req.body;
 
         apiMethod(routeParams, body)
           .then((result: any) => {
@@ -83,5 +83,5 @@ export function registerApi(apiRouter: Router, apiPrefix: string, controllerInst
     }
   }
 
-  apiRouter.use(apiPrefix + resourcePrefix, resourceRouter);
+  apiRouter.use(apiPrefix + (resourcePrefix || ''), resourceRouter);
 }
